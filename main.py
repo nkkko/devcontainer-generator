@@ -8,6 +8,7 @@ from supabase_client import supabase
 
 from helpers.openai_helpers import setup_azure_openai, setup_instructor
 from helpers.github_helpers import fetch_repo_context, check_url_exists
+from helpers.devcontainer_lookup import resolve_devcontainer_lookup
 from helpers.devcontainer_helpers import generate_devcontainer_json, validate_devcontainer_json
 from helpers.token_helpers import count_tokens, truncate_to_token_limit
 from models import DevContainer
@@ -109,26 +110,28 @@ async def post(repo_url: str, regenerate: bool = False):
     repo_url = repo_url.rstrip('/')
 
     try:
-        exists, existing_record = check_url_exists(repo_url)
-        logging.info(f"URL check result: exists={exists}, existing_record={existing_record}")
+        lookup_result = resolve_devcontainer_lookup(
+            repo_url=repo_url,
+            regenerate=regenerate,
+            instructor_client=globals().get("instructor_client"),
+            check_url_exists=check_url_exists,
+            fetch_repo_context=fetch_repo_context,
+            generate_devcontainer_json=generate_devcontainer_json,
+        )
 
-        repo_context, existing_devcontainer, devcontainer_url = fetch_repo_context(repo_url)
-        logging.info(f"Fetched repo context. Existing devcontainer: {'Yes' if existing_devcontainer else 'No'}")
-        logging.info(f"Devcontainer URL: {devcontainer_url}")
-
-        if exists and not regenerate:
+        if lookup_result.source == "database":
             logging.info(f"URL already exists in database. Returning existing devcontainer_json for: {repo_url}")
-            devcontainer_json = existing_record['devcontainer_json']
-            generated = existing_record['generated']
-            source = "database"
-            url = existing_record['devcontainer_url']
         else:
-            devcontainer_json, url = generate_devcontainer_json(instructor_client, repo_url, repo_context, devcontainer_url, regenerate=regenerate)
-            generated = True
-            source = "generated" if url is None else "repository"
+            logging.info(f"Fetched repo context. Devcontainer URL: {lookup_result.devcontainer_url}")
 
+        devcontainer_json = lookup_result.devcontainer_json
+        generated = lookup_result.generated
+        source = lookup_result.source
+        url = lookup_result.url
+        repo_context = lookup_result.repo_context
+        devcontainer_url = lookup_result.devcontainer_url
 
-        if not exists or regenerate:
+        if lookup_result.should_save:
             logging.info("Saving to database...")
             try:
                 if hasattr(openai_client.embeddings, "create"):
