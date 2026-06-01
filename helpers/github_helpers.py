@@ -145,6 +145,13 @@ def fetch_repo_context(repo_url, max_depth=1):
     return "\n\n".join(context), existing_devcontainer, devcontainer_url
 
 def check_url_exists(url):
-    existing = supabase.table("devcontainers").select("*").eq("url", url).order("created_at", desc=True).limit(1).execute()
+    existing = (
+        supabase.table("devcontainers")
+        .select("devcontainer_json,generated,devcontainer_url,created_at")
+        .eq("url", url)
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
     existing_record = existing.data[0] if existing.data else None
     return existing_record is not None, existing_record
