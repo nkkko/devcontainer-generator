@@ -112,17 +112,17 @@ async def post(repo_url: str, regenerate: bool = False):
         exists, existing_record = check_url_exists(repo_url)
         logging.info(f"URL check result: exists={exists}, existing_record={existing_record}")
 
-        repo_context, existing_devcontainer, devcontainer_url = fetch_repo_context(repo_url)
-        logging.info(f"Fetched repo context. Existing devcontainer: {'Yes' if existing_devcontainer else 'No'}")
-        logging.info(f"Devcontainer URL: {devcontainer_url}")
-
-        if exists and not regenerate:
+        if exists and existing_record and not regenerate:
             logging.info(f"URL already exists in database. Returning existing devcontainer_json for: {repo_url}")
             devcontainer_json = existing_record['devcontainer_json']
             generated = existing_record['generated']
             source = "database"
             url = existing_record['devcontainer_url']
         else:
+            repo_context, existing_devcontainer, devcontainer_url = fetch_repo_context(repo_url)
+            logging.info(f"Fetched repo context. Existing devcontainer: {'Yes' if existing_devcontainer else 'No'}")
+            logging.info(f"Devcontainer URL: {devcontainer_url}")
+
             devcontainer_json, url = generate_devcontainer_json(instructor_client, repo_url, repo_context, devcontainer_url, regenerate=regenerate)
             generated = True
             source = "generated" if url is None else "repository"
