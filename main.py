@@ -9,7 +9,12 @@ from supabase_client import supabase
 from helpers.openai_helpers import setup_azure_openai, setup_instructor
 from helpers.github_helpers import fetch_repo_context, check_url_exists
 from helpers.devcontainer_helpers import generate_devcontainer_json, validate_devcontainer_json
-from helpers.token_helpers import count_tokens, truncate_to_token_limit
+from helpers.token_helpers import (
+    DEFAULT_EMBEDDING_MAX_TOKENS,
+    count_tokens,
+    max_tokens_from_env,
+    truncate_to_token_limit,
+)
 from models import DevContainer
 from schemas import DevContainerModel
 from content import *
@@ -133,7 +138,7 @@ async def post(repo_url: str, regenerate: bool = False):
             try:
                 if hasattr(openai_client.embeddings, "create"):
                     embedding_model = os.getenv("EMBEDDING", "text-embedding-ada-002")
-                    max_tokens = int(os.getenv("EMBEDDING_MODEL_MAX_TOKENS", 8192))
+                    max_tokens = max_tokens_from_env("EMBEDDING_MODEL_MAX_TOKENS", DEFAULT_EMBEDDING_MAX_TOKENS)
 
                     truncated_context = truncate_to_token_limit(repo_context, embedding_model, max_tokens)
 
