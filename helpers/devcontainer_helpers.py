@@ -4,21 +4,23 @@ import json
 import logging
 import os
 import jsonschema
-import tiktoken
 from helpers.jinja_helper import process_template
+from helpers.token_helpers import (
+    DEFAULT_LLM_MAX_TOKENS,
+    encoding_for_model,
+    max_tokens_from_env,
+)
 from schemas import DevContainerModel
 from supabase_client import supabase
 from models import DevContainer
 
 
-import logging
-import tiktoken
-
-def truncate_context(context, max_tokens=120000):
-    logging.info(f"Starting truncate_context with max_tokens={max_tokens}")
+def truncate_context(context, model_name=None, max_tokens=DEFAULT_LLM_MAX_TOKENS):
+    model_name = model_name or os.getenv("MODEL", "gpt-4o-mini")
+    logging.info(f"Starting truncate_context with model={model_name}, max_tokens={max_tokens}")
     logging.debug(f"Initial context length: {len(context)} characters")
 
-    encoding = tiktoken.encoding_for_model("gpt-4o-mini")
+    encoding = encoding_for_model(model_name)
     tokens = encoding.encode(context)
 
     logging.info(f"Initial token count: {len(tokens)}")
@@ -76,7 +78,9 @@ def generate_devcontainer_json(instructor_client, repo_url, repo_context, devcon
     logging.info("Generating devcontainer.json...")
 
     # Truncate the context to fit within token limits
-    truncated_context = truncate_context(repo_context, max_tokens=126000)
+    model_name = os.getenv("MODEL")
+    max_context_tokens = max_tokens_from_env("LLM_MODEL_MAX_TOKENS", DEFAULT_LLM_MAX_TOKENS)
+    truncated_context = truncate_context(repo_context, model_name=model_name, max_tokens=max_context_tokens)
 
     template_data = {
         "repo_url": repo_url,
@@ -90,7 +94,7 @@ def generate_devcontainer_json(instructor_client, repo_url, repo_context, devcon
         try:
             logging.debug(f"Attempt {attempt + 1} to generate devcontainer.json")
             response = instructor_client.chat.completions.create(
-                model=os.getenv("MODEL"),
+                model=model_name,
                 response_model=DevContainerModel,
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant that generates devcontainer.json files."},
