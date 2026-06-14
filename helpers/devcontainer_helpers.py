@@ -6,6 +6,7 @@ import os
 import jsonschema
 import tiktoken
 from helpers.jinja_helper import process_template
+from helpers.llm_message_helpers import build_devcontainer_messages
 from schemas import DevContainerModel
 from supabase_client import supabase
 from models import DevContainer
@@ -92,10 +93,7 @@ def generate_devcontainer_json(instructor_client, repo_url, repo_context, devcon
             response = instructor_client.chat.completions.create(
                 model=os.getenv("MODEL"),
                 response_model=DevContainerModel,
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant that generates devcontainer.json files."},
-                    {"role": "user", "content": prompt},
-                ],
+                messages=build_devcontainer_messages(prompt, os.getenv("MODEL")),
             )
             devcontainer_json = json.dumps(response.dict(exclude_none=True), indent=2)
 

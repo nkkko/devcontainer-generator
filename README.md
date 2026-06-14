@@ -56,6 +56,7 @@ To run this project in Daytona, you'll need to have Daytona installed. Follow th
     AZURE_OPENAI_API_KEY=your_azure_openai_api_key
     AZURE_OPENAI_API_VERSION=your_azure_openai_api_version
     MODEL=your_model_name
+    ANTHROPIC_PREFILL_PROMPT=optional_prefill_for_claude_models
     GITHUB_TOKEN=your_github_token
     ```
 
@@ -85,6 +86,7 @@ AZURE_OPENAI_ENDPOINT=your_azure_openai_endpoint
 AZURE_OPENAI_API_KEY=your_azure_openai_api_key
 AZURE_OPENAI_API_VERSION=your_azure_openai_api_version
 MODEL=your_model_name
+ANTHROPIC_PREFILL_PROMPT=optional_prefill_for_claude_models
 GITHUB_TOKEN=your_github_token
 ```
 
