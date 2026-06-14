@@ -9,6 +9,7 @@ from supabase_client import supabase
 from helpers.openai_helpers import setup_azure_openai, setup_instructor
 from helpers.github_helpers import fetch_repo_context, check_url_exists
 from helpers.devcontainer_helpers import generate_devcontainer_json, validate_devcontainer_json
+from helpers.docker_compose_helpers import generate_docker_compose_yml
 from helpers.token_helpers import count_tokens, truncate_to_token_limit
 from models import DevContainer
 from schemas import DevContainerModel
@@ -127,6 +128,7 @@ async def post(repo_url: str, regenerate: bool = False):
             generated = True
             source = "generated" if url is None else "repository"
 
+        docker_compose_yml = generate_docker_compose_yml(devcontainer_json, repo_url)
 
         if not exists or regenerate:
             logging.info("Saving to database...")
@@ -182,6 +184,19 @@ async def post(repo_url: str, regenerate: bool = False):
                         title="Regenerate",
                     ),
                     Span(cls="action-text", id="action-text"),
+                    cls="button-group"
+                ),
+                cls="code-container relative"
+            ),
+            Article("Docker Compose generated"),
+            Pre(
+                Code(docker_compose_yml, id="docker-compose-code", cls="overflow-auto"),
+                Div(
+                    Button(
+                        Img(cls="w-4 h-4", src="assets/icons/copy-icon.svg", alt="Copy"),
+                        cls="icon-button copy-button",
+                        title="Copy docker-compose.yml to clipboard",
+                    ),
                     cls="button-group"
                 ),
                 cls="code-container relative"
