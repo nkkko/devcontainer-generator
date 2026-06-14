@@ -55,6 +55,9 @@ To run this project in Daytona, you'll need to have Daytona installed. Follow th
     AZURE_OPENAI_ENDPOINT=your_azure_openai_endpoint
     AZURE_OPENAI_API_KEY=your_azure_openai_api_key
     AZURE_OPENAI_API_VERSION=your_azure_openai_api_version
+    LLM_PROVIDER=azure_openai
+    OPENAI_API_KEY=your_openai_api_key_if_using_openai_provider
+    OPENAI_BASE_URL=optional_openai_compatible_base_url
     MODEL=your_model_name
     GITHUB_TOKEN=your_github_token
     ```
@@ -84,6 +87,9 @@ Ensure the following environment variables are set in your `.env` file:
 AZURE_OPENAI_ENDPOINT=your_azure_openai_endpoint
 AZURE_OPENAI_API_KEY=your_azure_openai_api_key
 AZURE_OPENAI_API_VERSION=your_azure_openai_api_version
+LLM_PROVIDER=azure_openai
+OPENAI_API_KEY=your_openai_api_key_if_using_openai_provider
+OPENAI_BASE_URL=optional_openai_compatible_base_url
 MODEL=your_model_name
 GITHUB_TOKEN=your_github_token
 ```

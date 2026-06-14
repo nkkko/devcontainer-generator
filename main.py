@@ -6,9 +6,10 @@ from fasthtml.common import *
 from dotenv import load_dotenv
 from supabase_client import supabase
 
-from helpers.openai_helpers import setup_azure_openai, setup_instructor
+from helpers.openai_helpers import setup_llm_client, setup_instructor
 from helpers.github_helpers import fetch_repo_context, check_url_exists
 from helpers.devcontainer_helpers import generate_devcontainer_json, validate_devcontainer_json
+from helpers.llm_provider_helpers import get_llm_provider, is_supported_llm_provider, required_env_vars_for_provider
 from helpers.token_helpers import count_tokens, truncate_to_token_limit
 from models import DevContainer
 from schemas import DevContainerModel
@@ -21,15 +22,17 @@ logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %
 load_dotenv()
 
 def check_env_vars():
+    if not is_supported_llm_provider():
+        print(f"Unsupported LLM_PROVIDER: {get_llm_provider()}")
+        return False
+
     required_vars = [
-        "AZURE_OPENAI_ENDPOINT",
-        "AZURE_OPENAI_API_KEY",
-        "AZURE_OPENAI_API_VERSION",
         "MODEL",
         "GITHUB_TOKEN",
         "SUPABASE_URL",
         "SUPABASE_KEY",
     ]
+    required_vars.extend(required_env_vars_for_provider())
     missing_vars = [var for var in required_vars if not os.environ.get(var)]
     if missing_vars:
         print(f"Missing environment variables: {', '.join(missing_vars)}. Please configure the env vars file properly.")
@@ -202,7 +205,7 @@ async def get(fname:str, ext:str):
 
 # Initialize clients
 if check_env_vars():
-    openai_client = setup_azure_openai()
+    openai_client = setup_llm_client()
     instructor_client = setup_instructor(openai_client)
 
 if __name__ == "__main__":
