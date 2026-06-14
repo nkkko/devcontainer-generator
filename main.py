@@ -9,16 +9,17 @@ from supabase_client import supabase
 from helpers.openai_helpers import setup_azure_openai, setup_instructor
 from helpers.github_helpers import fetch_repo_context, check_url_exists
 from helpers.devcontainer_helpers import generate_devcontainer_json, validate_devcontainer_json
+from helpers.logging_helpers import get_log_level
 from helpers.token_helpers import count_tokens, truncate_to_token_limit
 from models import DevContainer
 from schemas import DevContainerModel
 from content import *
 
-# Set up logging
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
-
 # Load environment variables
 load_dotenv()
+
+# Set up logging
+logging.basicConfig(level=get_log_level(), format="%(asctime)s - %(levelname)s - %(message)s")
 
 def check_env_vars():
     required_vars = [

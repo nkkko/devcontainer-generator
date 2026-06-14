@@ -1,33 +1,42 @@
-console.log("main.js loaded");
+const isDebugLoggingEnabled = () => {
+  const host = window.location.hostname;
+  return window.DEVCONTAINER_DEBUG_LOGS === true || host === "localhost" || host === "127.0.0.1" || host === "";
+};
+
+const debugLog = (...args) => {
+  if (isDebugLoggingEnabled()) console.log(...args);
+};
+
+debugLog("main.js loaded");
 
 document.addEventListener('htmx:beforeRequest', function(event) {
-    console.log('htmx:beforeRequest triggered');
+    debugLog('htmx:beforeRequest triggered');
 
     if (event.detail.elt.id === 'generate-button') {
-        console.log('Disabling generate button');
+        debugLog('Disabling generate button');
         event.detail.elt.disabled = true;
     }
 });
 
 document.addEventListener('htmx:afterRequest', function(event) {
-    console.log('htmx:afterRequest triggered');
+    debugLog('htmx:afterRequest triggered');
 
     if (event.detail.elt.id === 'generate-button') {
-        console.log('Enabling generate button');
+        debugLog('Enabling generate button');
         event.detail.elt.disabled = false;
     }
 });
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM fully loaded and parsed');
+    debugLog('DOM fully loaded and parsed');
     const generateButton = document.getElementById('generate-button');
     if (generateButton) {
-        console.log('Generate button found');
+        debugLog('Generate button found');
         generateButton.addEventListener('click', function() {
-            console.log('Generate button clicked');
+            debugLog('Generate button clicked');
         });
     } else {
-        console.log('Generate button not found');
+        debugLog('Generate button not found');
     }
 });
 
@@ -37,7 +46,7 @@ function handleCopyClick(event) {
   const button = event.target.closest('.icon-button.copy-button');
   if (!button) return;
 
-  console.log("Copy button clicked");
+  debugLog("Copy button clicked");
 
   const codeContainer = button.closest(".code-container");
   if (!codeContainer) {
@@ -56,7 +65,7 @@ function handleCopyClick(event) {
 
   navigator.clipboard.writeText(codeContents)
     .then(() => {
-      console.log("Copy successful");
+      debugLog("Copy successful");
       showActionText("Copied!");
     })
     .catch(error => {
@@ -68,7 +77,7 @@ function handleRegenerateClick(event) {
   const button = event.target.closest('.icon-button.regenerate-button');
   if (!button) return;
 
-  console.log("Regenerate button clicked");
+  debugLog("Regenerate button clicked");
   showActionText("Regenerating...");
   // The actual regeneration is handled by HTMX
 }
@@ -90,17 +99,17 @@ function initializeButtons() {
   const copyButtons = document.querySelectorAll(".icon-button.copy-button");
   const regenerateButtons = document.querySelectorAll(".icon-button.regenerate-button");
 
-  console.log("Copy buttons found:", copyButtons.length);
-  console.log("Regenerate buttons found:", regenerateButtons.length);
+  debugLog("Copy buttons found:", copyButtons.length);
+  debugLog("Regenerate buttons found:", regenerateButtons.length);
 
   copyButtons.forEach((button, index) => {
-    console.log(`Adding listener to copy button ${index}`);
+    debugLog(`Adding listener to copy button ${index}`);
     button.removeEventListener("click", handleCopyClick);
     button.addEventListener("click", handleCopyClick);
   });
 
   regenerateButtons.forEach((button, index) => {
-    console.log(`Adding listener to regenerate button ${index}`);
+    debugLog(`Adding listener to regenerate button ${index}`);
     button.removeEventListener("click", handleRegenerateClick);
     button.addEventListener("click", handleRegenerateClick);
   });
@@ -164,4 +173,3 @@ document.addEventListener('DOMContentLoaded', function() {
   initializeButtons();
   setupObserver();
 });
-
