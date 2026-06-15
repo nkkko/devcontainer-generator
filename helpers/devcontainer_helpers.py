@@ -81,7 +81,8 @@ def generate_devcontainer_json(instructor_client, repo_url, repo_context, devcon
     template_data = {
         "repo_url": repo_url,
         "repo_context": truncated_context,
-        "existing_devcontainer": existing_devcontainer
+        "existing_devcontainer": existing_devcontainer,
+        "context_source": "a project description" if "<<SECTION: Project Description >>" in repo_context else "a GitHub repository",
     }
 
     prompt = process_template("prompts/devcontainer.jinja", template_data)

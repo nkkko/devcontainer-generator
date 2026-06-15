@@ -8,7 +8,7 @@ def hero_section():
         Div(
             H1("AI-Powered Dev Environment Setup", cls="text-3xl font-bold text-center"),
             H2("From GitHub to Ready-to-Code in Seconds"),
-            P("Paste your GitHub URL and get a custom devcontainer.json to simplify your development.", cls="text-lg text-center mt-4"),
+            P("Paste a GitHub URL or describe a project to get a custom devcontainer.json.", cls="text-lg text-center mt-4"),
             cls="container mx-auto px-4 py-16"
         ),
         cls="bg-gray-100",
@@ -19,7 +19,7 @@ def generator_section():
     return Section(
         Form(
             Group(
-                Input(type="text", name="repo_url", placeholder="Paste your Github repo URL, or select a repo to get started", cls="form-input", list="repo-list"),
+                Input(type="text", name="repo_url", placeholder="Paste a GitHub repo URL or describe a project", cls="form-input", list="repo-list"),
                 Datalist(
                     Option(value="https://github.com/devcontainers/templates"),
                     Option(value="https://github.com/JetBrains/devcontainers-examples"),

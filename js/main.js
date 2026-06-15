@@ -123,19 +123,27 @@ function isValidGithubUrl(url) {
   return pattern.test(url);
 }
 
+function looksLikeUrl(value) {
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(value);
+}
+
+function isValidProjectDescription(value) {
+  return value.trim().length >= 10 && !isValidGithubUrl(value.trim()) && !looksLikeUrl(value.trim());
+}
+
 function validateRepoUrl() {
   const input = document.querySelector('input[name="repo_url"]');
   const errorDiv = document.getElementById('url-error');
   const generateButton = document.getElementById('generate-button');
 
   if (input.value.trim() === '') {
-      errorDiv.textContent = 'Please enter a GitHub repository URL.';
+      errorDiv.textContent = 'Please enter a GitHub repository URL or project description.';
       generateButton.disabled = true;
       return false;
   }
 
-  if (!isValidGithubUrl(input.value)) {
-      errorDiv.textContent = 'Please enter a valid GitHub repository URL.';
+  if (!isValidGithubUrl(input.value) && !isValidProjectDescription(input.value)) {
+      errorDiv.textContent = 'Please enter a GitHub repository URL or describe the project in plain text.';
       generateButton.disabled = true;
       return false;
   }
@@ -164,4 +172,3 @@ document.addEventListener('DOMContentLoaded', function() {
   initializeButtons();
   setupObserver();
 });
-

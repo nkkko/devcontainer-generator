@@ -1,13 +1,15 @@
 import logging
 import os
 import json
+from urllib.parse import quote_plus
 from datetime import datetime
 from fasthtml.common import *
 from dotenv import load_dotenv
 from supabase_client import supabase
 
 from helpers.openai_helpers import setup_azure_openai, setup_instructor
-from helpers.github_helpers import fetch_repo_context, check_url_exists
+from helpers.github_helpers import fetch_repo_context, check_url_exists, is_valid_github_url
+from helpers.natural_language_helpers import build_project_description_context, project_description_cache_key
 from helpers.devcontainer_helpers import generate_devcontainer_json, validate_devcontainer_json
 from helpers.token_helpers import count_tokens, truncate_to_token_limit
 from models import DevContainer
@@ -105,19 +107,27 @@ async def get():
 async def post(repo_url: str, regenerate: bool = False):
     logging.info(f"Generating devcontainer.json for: {repo_url}")
 
-    # Normalize the repo_url by stripping trailing slashes
-    repo_url = repo_url.rstrip('/')
-
     try:
-        exists, existing_record = check_url_exists(repo_url)
+        project_input = repo_url.strip()
+        if is_valid_github_url(project_input):
+            repo_url = project_input.rstrip('/')
+            cache_key = repo_url
+            repo_context, existing_devcontainer, devcontainer_url = fetch_repo_context(repo_url)
+            logging.info(f"Fetched repo context. Existing devcontainer: {'Yes' if existing_devcontainer else 'No'}")
+            logging.info(f"Devcontainer URL: {devcontainer_url}")
+        else:
+            repo_url = project_input
+            cache_key = project_description_cache_key(project_input)
+            repo_context = build_project_description_context(project_input)
+            existing_devcontainer = None
+            devcontainer_url = None
+            logging.info("Using natural language project description as generation context.")
+
+        exists, existing_record = check_url_exists(cache_key)
         logging.info(f"URL check result: exists={exists}, existing_record={existing_record}")
 
-        repo_context, existing_devcontainer, devcontainer_url = fetch_repo_context(repo_url)
-        logging.info(f"Fetched repo context. Existing devcontainer: {'Yes' if existing_devcontainer else 'No'}")
-        logging.info(f"Devcontainer URL: {devcontainer_url}")
-
         if exists and not regenerate:
-            logging.info(f"URL already exists in database. Returning existing devcontainer_json for: {repo_url}")
+            logging.info(f"Input already exists in database. Returning existing devcontainer_json for: {cache_key}")
             devcontainer_json = existing_record['devcontainer_json']
             generated = existing_record['generated']
             source = "database"
@@ -143,7 +153,7 @@ async def post(repo_url: str, regenerate: bool = False):
                     embedding_json = None
 
                 new_devcontainer = DevContainer(
-                    url=repo_url,
+                    url=cache_key,
                     devcontainer_json=devcontainer_json,
                     devcontainer_url=devcontainer_url,
                     repo_context=repo_context,
@@ -176,7 +186,7 @@ async def post(repo_url: str, regenerate: bool = False):
                     Button(
                         Img(cls="w-4 h-4", src="assets/icons/regenerate.svg", alt="Regenerate"),
                         cls="icon-button regenerate-button",
-                        hx_post=f"/generate?regenerate=true&repo_url={repo_url}",
+                        hx_post=f"/generate?regenerate=true&repo_url={quote_plus(repo_url)}",
                         hx_target="#result",
                         hx_indicator="#action-text",
                         title="Regenerate",
