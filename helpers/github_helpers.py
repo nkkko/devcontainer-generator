@@ -2,9 +2,28 @@ import os
 import re
 import logging
 import requests
+import time
 from helpers.token_helpers import count_tokens
 from models import DevContainer
 from supabase_client import supabase
+
+_url_exists_cache = {}
+
+def _db_cache_ttl_seconds():
+    try:
+        return int(os.getenv("DEVCONTAINER_DB_CACHE_SECONDS", "300"))
+    except ValueError:
+        return 300
+
+def _cache_key(url):
+    return url.rstrip("/")
+
+def clear_url_exists_cache(url=None):
+    if url is None:
+        _url_exists_cache.clear()
+        return
+
+    _url_exists_cache.pop(_cache_key(url), None)
 
 def is_valid_github_url(url):
     pattern = r"^https?://github\.com/[\w-]+/[\w.-]+/?$"
@@ -144,7 +163,31 @@ def fetch_repo_context(repo_url, max_depth=1):
 
     return "\n\n".join(context), existing_devcontainer, devcontainer_url
 
-def check_url_exists(url):
-    existing = supabase.table("devcontainers").select("*").eq("url", url).order("created_at", desc=True).limit(1).execute()
+def check_url_exists(url, use_cache=True):
+    cache_key = _cache_key(url)
+    ttl_seconds = _db_cache_ttl_seconds()
+    now = time.monotonic()
+
+    if use_cache and ttl_seconds > 0:
+        cached = _url_exists_cache.get(cache_key)
+        if cached and now - cached["cached_at"] < ttl_seconds:
+            return cached["result"]
+
+    existing = (
+        supabase.table("devcontainers")
+        .select("url,devcontainer_json,generated,devcontainer_url,created_at")
+        .eq("url", cache_key)
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
     existing_record = existing.data[0] if existing.data else None
-    return existing_record is not None, existing_record
+    result = existing_record is not None, existing_record
+
+    if use_cache and ttl_seconds > 0 and existing_record is not None:
+        _url_exists_cache[cache_key] = {
+            "cached_at": now,
+            "result": result,
+        }
+
+    return result

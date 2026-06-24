@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from supabase_client import supabase
 
 from helpers.openai_helpers import setup_azure_openai, setup_instructor
-from helpers.github_helpers import fetch_repo_context, check_url_exists
+from helpers.github_helpers import fetch_repo_context, check_url_exists, clear_url_exists_cache
 from helpers.devcontainer_helpers import generate_devcontainer_json, validate_devcontainer_json
 from helpers.token_helpers import count_tokens, truncate_to_token_limit
 from models import DevContainer
@@ -101,6 +101,32 @@ def home():
 async def get():
     return home()
 
+def render_devcontainer_result(devcontainer_json, source, repo_url):
+    return Div(
+        Article(f"Devcontainer.json {'found in ' + source if source in ['database', 'repository'] else 'generated'}"),
+        Pre(
+            Code(devcontainer_json, id="devcontainer-code", cls="overflow-auto"),
+            Div(
+                Button(
+                    Img(cls="w-4 h-4", src="assets/icons/copy-icon.svg", alt="Copy"),
+                    cls="icon-button copy-button",
+                    title="Copy to clipboard",
+                ),
+                Button(
+                    Img(cls="w-4 h-4", src="assets/icons/regenerate.svg", alt="Regenerate"),
+                    cls="icon-button regenerate-button",
+                    hx_post=f"/generate?regenerate=true&repo_url={repo_url}",
+                    hx_target="#result",
+                    hx_indicator="#action-text",
+                    title="Regenerate",
+                ),
+                Span(cls="action-text", id="action-text"),
+                cls="button-group"
+            ),
+            cls="code-container relative"
+        )
+    )
+
 @rt("/generate", methods=["post"])
 async def post(repo_url: str, regenerate: bool = False):
     logging.info(f"Generating devcontainer.json for: {repo_url}")
@@ -109,23 +135,24 @@ async def post(repo_url: str, regenerate: bool = False):
     repo_url = repo_url.rstrip('/')
 
     try:
-        exists, existing_record = check_url_exists(repo_url)
+        exists, existing_record = check_url_exists(repo_url, use_cache=not regenerate)
         logging.info(f"URL check result: exists={exists}, existing_record={existing_record}")
+
+        if exists and not regenerate:
+            logging.info(f"URL already exists in database. Returning existing devcontainer_json for: {repo_url}")
+            return render_devcontainer_result(
+                existing_record["devcontainer_json"],
+                "database",
+                repo_url,
+            )
 
         repo_context, existing_devcontainer, devcontainer_url = fetch_repo_context(repo_url)
         logging.info(f"Fetched repo context. Existing devcontainer: {'Yes' if existing_devcontainer else 'No'}")
         logging.info(f"Devcontainer URL: {devcontainer_url}")
 
-        if exists and not regenerate:
-            logging.info(f"URL already exists in database. Returning existing devcontainer_json for: {repo_url}")
-            devcontainer_json = existing_record['devcontainer_json']
-            generated = existing_record['generated']
-            source = "database"
-            url = existing_record['devcontainer_url']
-        else:
-            devcontainer_json, url = generate_devcontainer_json(instructor_client, repo_url, repo_context, devcontainer_url, regenerate=regenerate)
-            generated = True
-            source = "generated" if url is None else "repository"
+        devcontainer_json, url = generate_devcontainer_json(instructor_client, repo_url, repo_context, devcontainer_url, regenerate=regenerate)
+        generated = True
+        source = "generated" if url is None else "repository"
 
 
         if not exists or regenerate:
@@ -159,34 +186,12 @@ async def post(repo_url: str, regenerate: bool = False):
 
                 result = supabase.table("devcontainers").insert(devcontainer_dict).execute()
                 logging.info(f"Successfully saved to database with devcontainer_url: {devcontainer_url}")
+                clear_url_exists_cache(repo_url)
             except Exception as e:
                 logging.error(f"Error while saving to database: {str(e)}")
                 raise
 
-        return Div(
-            Article(f"Devcontainer.json {'found in ' + source if source in ['database', 'repository'] else 'generated'}"),
-            Pre(
-                Code(devcontainer_json, id="devcontainer-code", cls="overflow-auto"),
-                Div(
-                    Button(
-                        Img(cls="w-4 h-4", src="assets/icons/copy-icon.svg", alt="Copy"),
-                        cls="icon-button copy-button",
-                        title="Copy to clipboard",
-                    ),
-                    Button(
-                        Img(cls="w-4 h-4", src="assets/icons/regenerate.svg", alt="Regenerate"),
-                        cls="icon-button regenerate-button",
-                        hx_post=f"/generate?regenerate=true&repo_url={repo_url}",
-                        hx_target="#result",
-                        hx_indicator="#action-text",
-                        title="Regenerate",
-                    ),
-                    Span(cls="action-text", id="action-text"),
-                    cls="button-group"
-                ),
-                cls="code-container relative"
-            )
-        )
+        return render_devcontainer_result(devcontainer_json, source, repo_url)
     except Exception as e:
         logging.error(f"An error occurred: {str(e)}", exc_info=True)
         return Div(H2("Error"), P(f"An error occurred: {str(e)}"))
